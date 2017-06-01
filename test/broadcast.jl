@@ -419,7 +419,6 @@ struct Array19745{T,N} <: AbstractArray{T,N}
     data::Array{T,N}
 end
 Base.getindex(A::Array19745, i::Integer...) = A.data[i...]
-Base.setindex!(A::Array19745, v::Any, i::Integer...) = setindex!(A.data, v, i...)
 Base.size(A::Array19745) = size(A.data)
 
 Base.Broadcast._containertype{T<:Array19745}(::Type{T}) = Array19745
@@ -436,12 +435,8 @@ Base.Broadcast.broadcast_indices(::Type{Array19745}, A::Ref) = ()
 getfield19745(x::Array19745) = x.data
 getfield19745(x)             = x
 
-function Base.Broadcast.broadcast_c(f, ::Type{Array19745}, A, Bs...)
-    T     = Base.Broadcast._broadcast_eltype(f, A, Bs...)
-    shape = Base.Broadcast.broadcast_indices(A, Bs...)
-    dest = Array19745(Array{T}(Base.index_lengths(shape...)))
-    return broadcast!(f, dest, A, Bs...)
-end
+Base.Broadcast.broadcast_c(f, ::Type{Array19745}, A, Bs...) =
+    Array19745(Base.Broadcast.broadcast_c(f, Array, getfield19745(A), map(getfield19745, Bs)...))
 
 @testset "broadcasting for custom AbstractArray" begin
     a  = randn(10)
@@ -520,3 +515,6 @@ let t = (0, 1, 2)
     o = 1
     @test @inferred(broadcast(+, t, o)) == (1, 2, 3)
 end
+
+# issue #22130
+@test convert.(Any, [1, 2]) == [1, 2]
